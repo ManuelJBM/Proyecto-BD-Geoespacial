@@ -1,16 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mapa PostGIS</title>
+  <title>Mapa PostGIS PRO</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    #map { height: 100vh; }
+    body { margin: 0; font-family: Arial; }
+
+    #sidebar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 260px;
+      height: 100%;
+      background: #ffffff;
+      padding: 15px;
+      z-index: 1000;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+    }
+
+    #map {
+      margin-left: 260px;
+      height: 100vh;
+    }
+
+    select, button, input {
+      width: 200;
+      margin-top: 10px;
+      padding: 8px;
+    }
+
+    hr {
+      opacity: 0;
+    }
+
+    .result {
+      margin-top: 10px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="app.js"></script>
+<div id="sidebar">
+  <h3>Filtros</h3>
+
+  <div>
+    <label>Tipo:</label>
+    <select id="filtroTipo">
+      <option value="">Todos</option>
+      <option value="restaurante">Restaurantes</option>
+      <option value="hospital">Hospitales</option>
+    </select>
+  </div>
+  <hr/>
+  <div>
+    <label>Radio (metros):</label>
+    <input type="number" id="radio" value="1000" />
+  </div>
+  <hr/>
+  <button onclick="buscarCercanos()">Buscar cercanos</button>
+
+  <div class="result" id="resultados"></div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
