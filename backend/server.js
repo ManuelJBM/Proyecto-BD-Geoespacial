@@ -18,6 +18,19 @@ app.get('/lugares', async (req, res) => {
   res.json(result.rows);
 });
 
+// Añadir lugares al mapa
+app.post('/lugares', async (req, res) => {
+  const { nombre, tipo, lat, lng } = req.body;
+
+  const result = await pool.query(`
+    INSERT INTO lugares (nombre, tipo, ubicacion)
+    VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326))
+    RETURNING *;
+  `, [nombre, tipo, lng, lat]);
+
+  res.json(result.rows[0]);
+});
+
 // Buscar lugares cercanos
 app.get('/cercanos', async (req, res) => {
   const { lat, lng, radio } = req.query;

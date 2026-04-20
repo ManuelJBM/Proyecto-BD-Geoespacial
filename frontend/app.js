@@ -28,6 +28,28 @@ function limpiarMapa() {
   marcadores = [];
 }
 
+async function cargarTipos() {
+  try {
+    const res = await fetch('http://localhost:3000/lugares');
+    if (!res.ok) throw new Error('Error fetching lugares');
+    const data = await res.json();
+    const tipos = Array.from(new Set(data.map(l => l.tipo).filter(Boolean))).sort();
+
+    const select = document.getElementById('filtroTipo');
+    // keep a default 'Todos' option
+    select.innerHTML = '<option value="">Todos</option>';
+
+    tipos.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Error cargando tipos:', err);
+  }
+}
+
 function cargarLugares(tipo = '') {
   limpiarMapa();
 
@@ -71,6 +93,45 @@ map.on('click', function(e) {
   }).addTo(map);
 });
 
+function anadirLugar() {
+  if (!puntoSeleccionado) {
+    alert('Haz click en el mapa primero');
+    return;
+  }
+
+  const nombre = prompt('Nombre del lugar:');
+  if (!nombre) return;
+  const tipo = prompt('Tipo (restaurante/hospital/etc):');
+  if (!tipo) return;
+
+  const lat = puntoSeleccionado.lat;
+  const lng = puntoSeleccionado.lng;
+
+  fetch('http://localhost:3000/lugares', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ nombre, tipo, lat, lng })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Error al guardar lugar');
+    return res.json();
+  })
+  .then(data => {
+    L.marker([lat, lng])
+      .addTo(map)
+      .bindPopup(`<b>${data.nombre}</b><br>Tipo: ${data.tipo}`);
+
+    // refrescar marcadores según filtro actual
+    cargarLugares(filtro.value);
+  })
+  .catch(err => {
+    console.error('Error guardando lugar:', err);
+    alert('Error guardando el lugar');
+  });
+}
+
 function buscarCercanos() {
   if (!puntoSeleccionado) {
     alert('Haz click en el mapa primero');
@@ -94,3 +155,4 @@ function buscarCercanos() {
 }
 
 cargarLugares();
+cargarTipos();

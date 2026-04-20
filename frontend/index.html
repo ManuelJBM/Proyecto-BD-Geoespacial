@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mapa PostGIS PRO</title>
+  <title>Mapa PostGIS</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body { margin: 0; font-family: Arial; }
@@ -29,10 +29,6 @@
       padding: 8px;
     }
 
-    hr {
-      opacity: 0;
-    }
-
     .result {
       margin-top: 10px;
       font-size: 14px;
@@ -48,17 +44,19 @@
     <label>Tipo:</label>
     <select id="filtroTipo">
       <option value="">Todos</option>
-      <option value="restaurante">Restaurantes</option>
-      <option value="hospital">Hospitales</option>
     </select>
   </div>
-  <hr/>
+  <br/>
+  <br/>
   <div>
     <label>Radio (metros):</label>
-    <input type="number" id="radio" value="1000" />
+    <input type="number" id="radio" value="1000"/>
   </div>
-  <hr/>
+  <br/>
+  <br/>
   <button onclick="buscarCercanos()">Buscar cercanos</button>
+  <br/>
+  <button onclick="anadirLugar()">Añadir ubicación</button>
 
   <div class="result" id="resultados"></div>
 </div>
