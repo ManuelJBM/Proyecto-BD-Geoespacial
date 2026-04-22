@@ -50,6 +50,15 @@ async function cargarTipos() {
   }
 }
 
+function crearPopup(lugar) {
+  return `
+    <b>${lugar.nombre}</b><br>
+    Tipo: ${lugar.tipo}<br><br>
+    <button onclick="editarLugar(${lugar.id}, '${lugar.nombre}', '${lugar.tipo}')">Editar</button>
+    <button onclick="eliminarLugar(${lugar.id})">Eliminar</button>
+  `;
+}
+
 function cargarLugares(tipo = '') {
   limpiarMapa();
 
@@ -61,7 +70,7 @@ function cargarLugares(tipo = '') {
         .forEach(lugar => {
           const marker = L.marker([lugar.lat, lugar.lng])
             .addTo(map)
-            .bindPopup(`<b>${lugar.nombre}</b><br>Tipo: ${lugar.tipo}`);
+            .bindPopup(crearPopup(lugar));
 
           marcadores.push(marker);
         });
@@ -93,6 +102,7 @@ map.on('click', function(e) {
   }).addTo(map);
 });
 
+// AÑADIR
 function anadirLugar() {
   if (!puntoSeleccionado) {
     alert('Haz click en el mapa primero');
@@ -129,6 +139,38 @@ function anadirLugar() {
   .catch(err => {
     console.error('Error guardando lugar:', err);
     alert('Error guardando el lugar');
+  });
+}
+
+// ELIMINAR
+function eliminarLugar(id) {
+  if (!confirm('¿Seguro que quieres eliminar este punto?')) return;
+
+  fetch(`http://localhost:3000/lugares/${id}`, {
+    method: 'DELETE'
+  })
+  .then(() => {
+    cargarLugares();
+  });
+}
+
+// EDITAR
+function editarLugar(id, nombreActual, tipoActual) {
+  const nuevoNombre = prompt('Nuevo nombre:', nombreActual);
+  const nuevoTipo = prompt('Nuevo tipo:', tipoActual);
+
+  if (!nuevoNombre || !nuevoTipo) return;
+
+  fetch(`http://localhost:3000/lugares/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ nombre: nuevoNombre, tipo: nuevoTipo })
+  })
+  .then(res => res.json())
+  .then(() => {
+    cargarLugares();
   });
 }
 

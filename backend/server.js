@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(json());
 
-// Obtener todos los lugares
+// OBTENER todos los lugares
 app.get('/lugares', async (req, res) => {
   const result = await pool.query(`
     SELECT id, nombre, tipo,
@@ -18,7 +18,7 @@ app.get('/lugares', async (req, res) => {
   res.json(result.rows);
 });
 
-// Añadir lugares al mapa
+// AÑADIR lugares al mapa
 app.post('/lugares', async (req, res) => {
   const { nombre, tipo, lat, lng } = req.body;
 
@@ -27,6 +27,30 @@ app.post('/lugares', async (req, res) => {
     VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326))
     RETURNING *;
   `, [nombre, tipo, lng, lat]);
+
+  res.json(result.rows[0]);
+});
+
+// ELIMINAR lugares del mapa
+app.delete('/lugares/:id', async (req, res) => {
+  const { id } = req.params;
+
+  await pool.query('DELETE FROM lugares WHERE id = $1', [id]);
+
+  res.json({ message: 'Eliminado correctamente' });
+});
+
+// EDITAR lugares del mapa
+app.put('/lugares/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, tipo } = req.body;
+
+  const result = await pool.query(`
+    UPDATE lugares
+    SET nombre = $1, tipo = $2
+    WHERE id = $3
+    RETURNING *;
+  `, [nombre, tipo, id]);
 
   res.json(result.rows[0]);
 });
