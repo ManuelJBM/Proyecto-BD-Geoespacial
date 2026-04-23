@@ -12,3 +12,11 @@ VALUES
 ('Restaurante A', 'Restaurante', ST_SetSRID(ST_MakePoint(-6.97, 38.88), 4326)),
 ('Restaurante B', 'Restaurante', ST_SetSRID(ST_MakePoint(-6.96, 38.89), 4326)),
 ('Hospital 1', 'Hospital', ST_SetSRID(ST_MakePoint(-6.95, 38.87), 4326));
+
+CREATE TABLE zonas (
+  id SERIAL PRIMARY KEY,
+  nombre TEXT,
+  tipo TEXT,
+  trafico INTEGER,
+  geometria GEOMETRY(POLYGON, 4326)
+);

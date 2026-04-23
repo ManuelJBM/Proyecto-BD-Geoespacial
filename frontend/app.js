@@ -1,3 +1,5 @@
+///// ----- VARIABLES ----- /////
+
 const map = L.map('map').setView([38.88, -6.97], 13);
 
 const tiles = L.tileLayer('http://localhost:3000/tiles/{z}/{x}/{y}.png', {
@@ -14,8 +16,8 @@ let puntoSeleccionado = null;
 let circulo = null;
 let marcadorSeleccionado = null;
 
-const redIcon = L.icon({
-  iconUrl: './static/marker-icon-red.png',
+const pointerIcon = L.icon({
+  iconUrl: './static/marker-icon-violet.png',
   shadowUrl: './static/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -23,9 +25,50 @@ const redIcon = L.icon({
   shadowSize: [41, 41]
 });
 
+const filtro = document.getElementById('filtroTipo');
+filtro.addEventListener('change', () => {
+  cargarLugares(filtro.value);
+});
+
+function crearPopup(lugar) {
+  return `
+    <b>${lugar.nombre}</b><br>
+    Tipo: ${lugar.tipo}<br><br>
+    <button onclick="editarLugar(${lugar.id}, '${lugar.nombre}', '${lugar.tipo}')">Editar</button>
+    <button onclick="eliminarLugar(${lugar.id})">Eliminar</button>
+  `;
+}
+
+function getColor(trafico) {
+  if (trafico === 3) return 'red';
+  if (trafico === 2) return 'orange';
+  return 'green';
+}
+
+var drawControl = new L.Control.Draw({
+  draw: {
+    polygon: true,
+    rectangle: false,
+    circle: false,
+    marker: false,
+    polyline: false
+  }
+});
+
+map.addControl(drawControl);
+
+///// ----- FUNCIONES ----- /////
+
 function limpiarMapa() {
   marcadores.forEach(m => map.removeLayer(m));
   marcadores = [];
+}
+
+function coordsToWKT(coords) {
+  const puntos = coords.map(c => `${c.lng} ${c.lat}`);
+  puntos.push(`${coords[0].lng} ${coords[0].lat}`);
+  return `POLYGON((${puntos.join(',')}))`;
+
 }
 
 async function cargarTipos() {
@@ -36,7 +79,6 @@ async function cargarTipos() {
     const tipos = Array.from(new Set(data.map(l => l.tipo).filter(Boolean))).sort();
 
     const select = document.getElementById('filtroTipo');
-    // keep a default 'Todos' option
     select.innerHTML = '<option value="">Todos</option>';
 
     tipos.forEach(t => {
@@ -48,15 +90,6 @@ async function cargarTipos() {
   } catch (err) {
     console.error('Error cargando tipos:', err);
   }
-}
-
-function crearPopup(lugar) {
-  return `
-    <b>${lugar.nombre}</b><br>
-    Tipo: ${lugar.tipo}<br><br>
-    <button onclick="editarLugar(${lugar.id}, '${lugar.nombre}', '${lugar.tipo}')">Editar</button>
-    <button onclick="eliminarLugar(${lugar.id})">Eliminar</button>
-  `;
 }
 
 function cargarLugares(tipo = '') {
@@ -79,30 +112,31 @@ function cargarLugares(tipo = '') {
     });
 }
 
-const filtro = document.getElementById('filtroTipo');
-filtro.addEventListener('change', () => {
-  cargarLugares(filtro.value);
-});
+async function cargarZonas() {
+  const res = await fetch('http://localhost:3000/zonas');
+  const zonas = await res.json();
 
-map.on('click', function(e) {
-  puntoSeleccionado = e.latlng;
+  zonas.forEach(zona => {
+    const geo = JSON.parse(zona.geojson);
 
-  if (circulo) map.removeLayer(circulo);
+    L.geoJSON(geo, {
+      style: {
+        color: getColor(zona.trafico),
+        fillOpacity: 0.4
+      }
+    })
+      .bindPopup(`
+        <b>${zona.nombre}</b><br>
+        Tipo: ${zona.tipo}<br>
+        Tráfico: ${zona.trafico}<br><br>
+        <button onclick="editarZona(${zona.id}, '${zona.nombre}', '${zona.tipo}', '${zona.trafico}')">Editar</button>
+        <button onclick="eliminarZona(${zona.id})">Eliminar</button>
+      `)
+    .addTo(map);
+  });
+}
 
-  const radio = document.getElementById('radio').value;
-
-  circulo = L.circle(puntoSeleccionado, {
-    radius: radio
-  }).addTo(map);
-
-  if (marcadorSeleccionado) map.removeLayer(marcadorSeleccionado);
-
-  marcadorSeleccionado = L.marker(puntoSeleccionado, { 
-    icon: redIcon 
-  }).addTo(map);
-});
-
-// AÑADIR
+// AÑADIR lugar
 function anadirLugar() {
   if (!puntoSeleccionado) {
     alert('Haz click en el mapa primero');
@@ -142,7 +176,7 @@ function anadirLugar() {
   });
 }
 
-// ELIMINAR
+// ELIMINAR lugar
 function eliminarLugar(id) {
   if (!confirm('¿Seguro que quieres eliminar este punto?')) return;
 
@@ -154,7 +188,7 @@ function eliminarLugar(id) {
   });
 }
 
-// EDITAR
+// EDITAR lugar
 function editarLugar(id, nombreActual, tipoActual) {
   const nuevoNombre = prompt('Nuevo nombre:', nombreActual);
   const nuevoTipo = prompt('Nuevo tipo:', tipoActual);
@@ -171,6 +205,74 @@ function editarLugar(id, nombreActual, tipoActual) {
   .then(res => res.json())
   .then(() => {
     cargarLugares();
+  });
+}
+
+// AÑADIR zona
+async function guardarZona() {
+  const nombre = prompt("Nombre de la zona:");
+  const tipo = prompt("Tipo (avenida, barrio...):");
+  const trafico = prompt("Nivel tráfico (1-3):");
+
+  const wkt = coordsToWKT(window.currentPolygon);
+
+  await fetch('http://localhost:3000/zonas', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      nombre,
+      tipo,
+      trafico: parseInt(trafico),
+      wkt
+    })
+  });
+
+  alert("Zona guardada");
+}
+
+// EDITAR zona
+function editarZona(id, nombreActual, tipoActual, traficoActual) {
+  const nuevoNombre = prompt('Nuevo nombre:', nombreActual);
+  const nuevoTipo = prompt('Nuevo tipo:', tipoActual);
+  const nuevoTrafico = prompt('Nuevo nivel de tráfico (1-3):', traficoActual);
+
+  if (!nuevoNombre || !nuevoTipo || !nuevoTrafico) return;
+
+  const body = {
+    nombre: nuevoNombre,
+    tipo: nuevoTipo,
+    trafico: parseInt(nuevoTrafico)
+  };
+
+  fetch(`http://localhost:3000/zonas/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(res => res.json())
+  .then(() => {
+    cargarZonas();
+  })
+  .catch(err => {
+    console.error('Error editando zona:', err);
+    alert('Error editando la zona');
+  });
+}
+
+// ELIMINAR zona
+function eliminarZona(id) {
+  if (!confirm('¿Seguro que quieres eliminar esta zona?')) return;
+
+  fetch(`http://localhost:3000/zonas/${id}`, { 
+    method: 'DELETE' 
+  })
+  .then(() => {
+    cargarZonas();
+  })
+  .catch(err => {
+    alert('Error eliminando la zona');
   });
 }
 
@@ -196,5 +298,33 @@ function buscarCercanos() {
     });
 }
 
+map.on('click', function(e) {
+  puntoSeleccionado = e.latlng;
+
+  if (circulo) map.removeLayer(circulo);
+
+  const radio = document.getElementById('radio').value;
+
+  circulo = L.circle(puntoSeleccionado, {
+    radius: radio
+  }).addTo(map);
+
+  if (marcadorSeleccionado) map.removeLayer(marcadorSeleccionado);
+
+  marcadorSeleccionado = L.marker(puntoSeleccionado, { 
+    icon: pointerIcon 
+  }).addTo(map);
+});
+
+map.on('draw:created', function (e) {
+  const layer = e.layer;
+  map.addLayer(layer);
+
+  const puntos = layer.getLatLngs()[0]; // array de puntos
+
+  window.currentPolygon = puntos;
+});
+
 cargarLugares();
+cargarZonas();
 cargarTipos();
